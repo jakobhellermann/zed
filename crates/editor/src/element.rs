@@ -3204,8 +3204,7 @@ fn deploy_blame_entry_context_menu(
 
 // TODO kb is possible to simplify the code and unite hitboxes with the HoveredHunk?
 // TODO kb do not draw git diff hunks for the expanded ones
-// TODO kb update the expanded chunks on editor changes
-// TODO kb proper colors
+// TODO kb update the expanded hunks on editor changes
 // TODO kb display a revert icon in each expanded hunk
 fn try_click_diff_hunk(
     editor: &mut Editor,
@@ -3225,25 +3224,18 @@ fn try_click_diff_hunk(
     let hunk_start = buffer_snapshot.anchor_at(buffer_range.start, Bias::Left);
     let hunk_end = buffer_snapshot.anchor_at(buffer_range.end, Bias::Left);
 
+    let mut created_color = cx.theme().status().git().created;
+    created_color.fade_out(0.7);
     match hovered_hunk.status {
         DiffHunkStatus::Removed => {
-            // TODO kb this lacks the text offset
             insert_deleted_hunk_block(editor, hunk_start, deleted_text, cx);
         }
         DiffHunkStatus::Added => {
-            editor.highlight_rows::<GitRowHighlight>(
-                hunk_start..hunk_end,
-                Some(cx.theme().status().git().created),
-                cx,
-            );
+            editor.highlight_rows::<GitRowHighlight>(hunk_start..hunk_end, Some(created_color), cx);
         }
         DiffHunkStatus::Modified => {
             insert_deleted_hunk_block(editor, hunk_start, deleted_text, cx);
-            editor.highlight_rows::<GitRowHighlight>(
-                hunk_start..hunk_end,
-                Some(cx.theme().status().git().created),
-                cx,
-            );
+            editor.highlight_rows::<GitRowHighlight>(hunk_start..hunk_end, Some(created_color), cx);
         }
     }
 
@@ -3279,6 +3271,7 @@ fn render_deleted_block(
     let removed_editor = cx.new_view(|cx| {
         let mut editor = Editor::multi_line(cx);
         editor.set_text(deleted_text, cx);
+        // TODO kb wrong: this moves the editor to the right, hides whitespaces before the code
         editor.set_line_numbers_enabled(false);
         editor.set_read_only(true);
         let editor_snapshot = editor.snapshot(cx);
@@ -3286,11 +3279,9 @@ fn render_deleted_block(
         let end = editor_snapshot
             .buffer_snapshot
             .anchor_after(editor.buffer.read(cx).len(cx));
-        editor.highlight_rows::<GitRowHighlight>(
-            start..end,
-            Some(cx.theme().status().git().deleted),
-            cx,
-        );
+        let mut deleted_color = cx.theme().status().git().deleted;
+        deleted_color.fade_out(0.7);
+        editor.highlight_rows::<GitRowHighlight>(start..end, Some(deleted_color), cx);
         // TODO kb does not scroll through, fix
         editor.scroll_manager = ScrollManager::fixed(height);
         editor
