@@ -324,6 +324,7 @@ pub enum EditorMode {
 #[derive(Clone, Debug)]
 pub enum SoftWrap {
     None,
+    PreferLine,
     EditorWidth,
     Column(u32),
 }
@@ -1404,7 +1405,7 @@ impl Editor {
         let blink_manager = cx.new_model(|cx| BlinkManager::new(CURSOR_BLINK_INTERVAL, cx));
 
         let soft_wrap_mode_override =
-            (mode == EditorMode::SingleLine).then(|| language_settings::SoftWrap::None);
+            (mode == EditorMode::SingleLine).then(|| language_settings::SoftWrap::PreferLine);
 
         let mut project_subscriptions = Vec::new();
         if mode == EditorMode::Full {
@@ -8863,6 +8864,7 @@ impl Editor {
             .unwrap_or_else(|| settings.soft_wrap);
         match mode {
             language_settings::SoftWrap::None => SoftWrap::None,
+            language_settings::SoftWrap::PreferLine => SoftWrap::PreferLine,
             language_settings::SoftWrap::EditorWidth => SoftWrap::EditorWidth,
             language_settings::SoftWrap::PreferredLineLength => {
                 SoftWrap::Column(settings.preferred_line_length)
@@ -8908,8 +8910,10 @@ impl Editor {
             self.soft_wrap_mode_override.take();
         } else {
             let soft_wrap = match self.soft_wrap_mode(cx) {
-                SoftWrap::None => language_settings::SoftWrap::EditorWidth,
-                SoftWrap::EditorWidth | SoftWrap::Column(_) => language_settings::SoftWrap::None,
+                SoftWrap::None | SoftWrap::PreferLine => language_settings::SoftWrap::EditorWidth,
+                SoftWrap::EditorWidth | SoftWrap::Column(_) => {
+                    language_settings::SoftWrap::PreferLine
+                }
             };
             self.soft_wrap_mode_override = Some(soft_wrap);
         }
