@@ -458,7 +458,7 @@ pub struct Editor {
     active_inline_completion: Option<Inlay>,
     show_inline_completions: bool,
     inlay_hint_cache: InlayHintCache,
-    git_blocks: HashSet<BlockId>,
+    expanded_hunks: Vec<ExpandedGitHunk>,
     next_inlay_id: usize,
     _subscriptions: Vec<Subscription>,
     pixel_position_of_newest_cursor: Option<gpui::Point<Pixels>>,
@@ -482,6 +482,12 @@ pub struct Editor {
     >,
     last_bounds: Option<Bounds<Pixels>>,
     expect_bounds_change: Option<Bounds<Pixels>>,
+}
+
+struct ExpandedGitHunk {
+    block: Option<BlockId>,
+    rows_highlighted: bool,
+    hunk_range: Range<Anchor>,
 }
 
 #[derive(Clone)]
@@ -1494,7 +1500,7 @@ impl Editor {
             inline_completion_provider: None,
             active_inline_completion: None,
             inlay_hint_cache: InlayHintCache::new(inlay_hint_settings),
-            git_blocks: HashSet::default(),
+            expanded_hunks: Vec::new(),
             gutter_hovered: false,
             pixel_position_of_newest_cursor: None,
             last_bounds: None,
@@ -2354,8 +2360,12 @@ impl Editor {
     }
 
     pub fn cancel(&mut self, _: &Cancel, cx: &mut ViewContext<Self>) {
+        let to_remove = self
+            .expanded_hunks
+            .drain(..)
+            .filter_map(|expanded_hunk| expanded_hunk.block)
+            .collect();
         self.clear_row_highlights::<GitRowHighlight>();
-        let to_remove = std::mem::take(&mut self.git_blocks);
         self.remove_blocks(to_remove, None, cx);
         if self.dismiss_menus_and_popups(cx) {
             return;
