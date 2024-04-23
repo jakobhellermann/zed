@@ -207,7 +207,7 @@ message Envelope {
         GetCachedEmbeddings get_cached_embeddings = 189;
         GetCachedEmbeddingsResponse get_cached_embeddings_response = 190;
         ComputeEmbeddings compute_embeddings = 191;
-        ComputeEmbeddingsResponse compute_embeddings_response = 192; // current max
+        ComputeEmbeddingsResponse compute_embeddings_response = 192;
 
         UpdateChannelMessage update_channel_message = 170;
         ChannelMessageUpdate channel_message_update = 171;
@@ -233,6 +233,8 @@ message Envelope {
         JoinRemoteProject join_remote_project = 185;
         RejoinRemoteProjects rejoin_remote_projects = 186;
         RejoinRemoteProjectsResponse rejoin_remote_projects_response = 187;
+
+        GetSupermavenAPIKey get_supermaven_api_key = 193; // current max
     }
 
     reserved 158 to 161;
@@ -1991,3 +1993,5 @@ message LspResponse {
         GetCodeActionsResponse get_code_actions_response = 2;
     }
 }
+
+message GetSupermavenAPIKey {}
