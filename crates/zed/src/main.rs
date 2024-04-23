@@ -10,19 +10,14 @@ use backtrace::Backtrace;
 use chrono::Utc;
 use clap::{command, Parser};
 use cli::FORCE_CLI_MODE_ENV_VAR_NAME;
-use client::{
-    parse_zed_link, telemetry::Telemetry, Client, ClientSettings, DevServerToken, UserStore,
-};
+use client::{parse_zed_link, Client, DevServerToken, UserStore};
 use collab_ui::channel_view::ChannelView;
 use db::kvp::KEY_VALUE_STORE;
 use editor::Editor;
 use env_logger::Builder;
 use fs::RealFs;
 use futures::{future, StreamExt};
-use gpui::{
-    App, AppContext, AsyncAppContext, AsyncAppContext, Context, SemanticVersion, Task,
-    VisualContext,
-};
+use gpui::{App, AppContext, AsyncAppContext, Context, SemanticVersion, Task, VisualContext};
 use image_viewer;
 use isahc::{prelude::Configurable, Request};
 use language::LanguageRegistry;
