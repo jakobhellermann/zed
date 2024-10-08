@@ -3984,9 +3984,7 @@ mod tests {
         fs.insert_tree(
             "/root1",
             json!({
-                "src": {
-                    "file.rs": "",
-                },
+                "file.rs": "",
             }),
         )
         .await;
@@ -3994,34 +3992,20 @@ mod tests {
         let project = Project::test(fs.clone(), ["/root1".as_ref()], cx).await;
         let workspace = cx.add_window(|cx| Workspace::test_new(project.clone(), cx));
         let cx = &mut VisualTestContext::from_window(*workspace, cx);
-        let panel = workspace
-            .update(cx, |workspace, cx| {
-                let panel = ProjectPanel::new(workspace, cx);
-                workspace.add_panel(panel.clone(), cx);
-                panel
-            })
-            .unwrap();
+        let panel = workspace.update(cx, ProjectPanel::new).unwrap();
 
-        select_path(&panel, "root1/src/file.rs", cx);
+        select_path(&panel, "root1/file.rs", cx);
         assert_eq!(
-            visible_entries_as_strings(&panel, 0..10, cx),
-            &["v root1  <== selected", "    v src", "        > file.rs"]
+            visible_entries_as_strings(&panel, 0..20, cx),
+            &["v root1", "      file.rs  <== selected"]
         );
 
         // Add a file with the root folder selected. The filename editor is placed
         // before the first file in the root folder.
         panel.update(cx, |panel, cx| panel.rename(&Rename, cx));
-        panel.update(cx, |panel, cx| {
-            assert!(panel.filename_editor.read(cx).is_focused(cx));
-        });
         assert_eq!(
             visible_entries_as_strings(&panel, 0..10, cx),
-            &[
-                "v root1",
-                "    v src",
-                "        > file.rs",
-                "          [EDITOR: '']  <== selected",
-            ]
+            &["v root1", "      [EDITOR: 'file.rs']  <== selected",]
         );
 
         let confirm = panel.update(cx, |panel, cx| {
@@ -4033,10 +4017,64 @@ mod tests {
 
         assert_eq!(
             visible_entries_as_strings(&panel, 0..10, cx),
+            &["v root1", "      [PROCESSING: 'file/mod.rs']  <== selected",]
+        );
+
+        confirm.await.unwrap();
+        assert_eq!(
+            visible_entries_as_strings(&panel, 0..13, cx),
+            &["v root1", "    v file", "          mod.rs  <== selected",]
+        );
+    }
+
+    #[gpui::test]
+    async fn test_rename_create_directory_into_existing(cx: &mut gpui::TestAppContext) {
+        init_test(cx);
+
+        let fs = FakeFs::new(cx.executor().clone());
+        fs.insert_tree(
+            "/root1",
+            json!({
+                "file.rs": "",
+                "existing": {}
+            }),
+        )
+        .await;
+
+        let project = Project::test(fs.clone(), ["/root1".as_ref()], cx).await;
+        let workspace = cx.add_window(|cx| Workspace::test_new(project.clone(), cx));
+        let cx = &mut VisualTestContext::from_window(*workspace, cx);
+        let panel = workspace.update(cx, ProjectPanel::new).unwrap();
+
+        select_path(&panel, "root1/file.rs", cx);
+        assert_eq!(
+            visible_entries_as_strings(&panel, 0..20, cx),
+            &["v root1", "    > existing", "      file.rs  <== selected",]
+        );
+
+        panel.update(cx, |panel, cx| panel.rename(&Rename, cx));
+        assert_eq!(
+            visible_entries_as_strings(&panel, 0..10, cx),
             &[
                 "v root1",
-                "    > src",
-                "      [PROCESSING: 'file/mod.rs']  <== selected",
+                "    > existing",
+                "      [EDITOR: 'file.rs']  <== selected",
+            ]
+        );
+
+        let confirm = panel.update(cx, |panel, cx| {
+            panel
+                .filename_editor
+                .update(cx, |editor, cx| editor.set_text("existing/mod.rs", cx));
+            panel.confirm_edit(cx).unwrap()
+        });
+
+        assert_eq!(
+            visible_entries_as_strings(&panel, 0..10, cx),
+            &[
+                "v root1",
+                "    > existing",
+                "      [PROCESSING: 'existing/mod.rs']  <== selected",
             ]
         );
 
@@ -4045,9 +4083,8 @@ mod tests {
             visible_entries_as_strings(&panel, 0..13, cx),
             &[
                 "v root1",
-                "    > .git",
-                "    v new_dir",
-                "        > file/mod.rs",
+                "    v existing",
+                "          mod.rs  <== selected",
             ]
         );
     }
