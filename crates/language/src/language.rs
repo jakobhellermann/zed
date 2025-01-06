@@ -865,6 +865,7 @@ pub struct Grammar {
     pub(crate) redactions_config: Option<RedactionConfig>,
     pub(crate) runnable_config: Option<RunnableConfig>,
     pub(crate) indents_config: Option<IndentConfig>,
+    pub(crate) fold_config: Option<FoldConfig>,
     pub outline_config: Option<OutlineConfig>,
     pub text_object_config: Option<TextObjectConfig>,
     pub embedding_config: Option<EmbeddingConfig>,
@@ -988,6 +989,11 @@ struct BracketConfig {
     close_capture_ix: u32,
 }
 
+struct FoldConfig {
+    query: Query,
+    fold_capture_ix: u32,
+}
+
 impl Language {
     pub fn new(config: LanguageConfig, ts_language: Option<tree_sitter::Language>) -> Self {
         Self::new_with_id(LanguageId::new(), config, ts_language)
@@ -1014,6 +1020,7 @@ impl Language {
                     override_config: None,
                     redactions_config: None,
                     runnable_config: None,
+                    fold_config: None,
                     error_query: Query::new(&ts_language, "(ERROR) @error").unwrap(),
                     ts_language,
                     highlight_map: Default::default(),
@@ -1084,6 +1091,11 @@ impl Language {
             self = self
                 .with_text_object_query(query.as_ref())
                 .context("Error loading textobject query")?;
+        }
+        if let Some(query) = queries.folds {
+            self = self
+                .with_folds_query(query.as_ref())
+                .context("Error loading folds query")?;
         }
         Ok(self)
     }
@@ -1412,6 +1424,25 @@ impl Language {
             grammar.redactions_config = Some(RedactionConfig {
                 query,
                 redaction_capture_ix,
+            });
+        }
+
+        Ok(self)
+    }
+
+    pub fn with_folds_query(mut self, source: &str) -> anyhow::Result<Self> {
+        let grammar = self
+            .grammar_mut()
+            .ok_or_else(|| anyhow!("cannot mutate grammar"))?;
+
+        let query = Query::new(&grammar.ts_language, source)?;
+        let mut fold_capture_ix = None;
+        get_capture_indices(&query, &mut [("fold", &mut fold_capture_ix)]);
+
+        if let Some(fold_capture_ix) = fold_capture_ix {
+            grammar.fold_config = Some(FoldConfig {
+                query,
+                fold_capture_ix,
             });
         }
 
